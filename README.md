@@ -42,6 +42,11 @@
     - Hostnames and ports for Sonarr, Radarr and Transmission
 
     ```python
+    
+    SUSPICIOUS_EXTENSIONS = ('.zipx', '.lnk', '.arj')  # Add or remove extensions as needed
+    BLOCK_TORRENT_ON_REMOVAL = True  # If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
+    syslog_enabled = True #if true, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
+    
     sonarr_host = 'XXXX'  # Update with your actual Sonarr host (e.g., 'localhost', '192.168.1.10', etc.)
     sonarr_port = '8989'  # Update with the actual port where Sonarr is running
     sonarr_url = f'http://{sonarr_host}:{sonarr_port}/api/v3/queue'
@@ -55,6 +60,10 @@
     radarr_port = '7878'  # Update with the actual port where Radarr is running
     radarr_url = f'http://{radarr_host}:{radarr_port}/api/v3/queue'
     radarr_api_key = 'XXXX'  # Replace with your actual Radarr API key
+
+    syslog_host = '<Syslog_IP>'
+    syslog_port = 514 # assume UDP
+    syslog_entity_id = 'torrentcleaner_python@hostname'
     ```
 
 ## Usage
@@ -66,11 +75,14 @@ Once configured, you can run the script to automatically check for torrents with
     ```bash
     python sonarr_queue_clearner.py
     ```
-
-2. The script will:
+    For automation either set cronjob to monitor remote host, or set torrent client to execute script upon opening torrent
+   
+3. The script will:
     - Fetch all torrents from Sonarr's queue.
     - Inspect the files in each torrent.
-    - If any `.zipx` or `.lnk` files are found, the torrent will be removed and the files deleted.
+    - If any file extensions are found in torrent that match the extensions set in the tupple SUSPICIOUS_EXTENSIONS, the torrent will be removed and the files deleted.
+    - Will forward any positive hit to syslog server along with errors if syslog_enabled = True
+    - Will block torrent for the future if BLOCK_TORRENT_ON_REMOVAL = True
 
 ## Example Output
 
@@ -85,16 +97,9 @@ Successfully removed download XXXX from Sonarr's queue.
 If you want to use qBittorrent instead of transmission, you will need to change this line
 
 ```python
-torrent_client = 'qbittorrent'  # Change to 'qbittorrent' if desired
+torrent_client = 'qbittorrent'  # Change to bittorrent client type 
 ```
 
-## Customization
-
-You can modify the file types that trigger removal by editing the `filename.endswith()` checks in the script:
-
-```python
-if filename.endswith('.zipx') or filename.endswith('.lnk'):
-```
 ## Only Require Sonarr or Radarr Support
 
 If you only need radarr or sonarr support, you can replace the fetch section in the script:
