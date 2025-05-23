@@ -200,7 +200,7 @@ for app_name, api_url, api_key in [
                 torrent_files = get_qbittorrent_torrent_files(torrent_hash)
             
             if torrent_files:
-                log_message(f"Checking torrent contents for: {title}", significant=True)
+                log_message(f"Checking torrent contents for: {title}")
                 remove_torrent_flag = False
 
                 if torrent_client.lower() == 'transmission':
