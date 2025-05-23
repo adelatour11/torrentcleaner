@@ -10,6 +10,7 @@
 - Inspects torrent contents to find suspicious file extensions (`.zipx` or `.lnk`).
 - Automatically removes torrents containing suspicious files.
 - Deletes associated files on disk using Transmission's API.
+- Can forward filter hit events to syslog server
 
 ## Requirements
 
