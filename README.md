@@ -25,7 +25,7 @@
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/adelatour11/torrentcleaner.git
+    git clone https://github.com/bugalou/torrentcleaner.git
     cd TorrentCleaner
     ```
 
