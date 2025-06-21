@@ -7,7 +7,7 @@ import logging.handlers
 # Configuration
 #############################################
 #General
-SUSPICIOUS_EXTENSIONS = ('.zipx', '.lnk', '.arj')  # Add or remove extensions as needed
+SUSPICIOUS_EXTENSIONS = ('.gz', '.001', '.zipx', '.lnk', '.arj')  # Add or remove extensions as needed
 BLOCK_TORRENT_ON_REMOVAL = True  # If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
 syslog_enabled = True #if true, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
 
