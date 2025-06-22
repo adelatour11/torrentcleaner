@@ -1,0 +1,1 @@
+('.zipx', '.gz', '.lz', '.lnk', '.arj', '.lzh')
