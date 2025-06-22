@@ -1,1 +1,6 @@
-('.zipx', '.gz', '.lz', '.lnk', '.arj', '.lzh')
+.zipx
+.gz
+.lz
+.lnk
+.arj
+.lzh
