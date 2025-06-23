@@ -7,9 +7,10 @@ import logging.handlers
 # Configuration
 #############################################
 #General
-SUSPICIOUS_EXTENSIONS = ('.lz', '.gz', '.001', '.zipx', '.lnk', '.arj')  # Add or remove extensions as needed
-BLOCK_TORRENT_ON_REMOVAL = True  # If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
-syslog_enabled = True #if true, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
+SUSPICIOUS_EXTENSIONS = ('.gz', '.001', '.zipx', '.lnk', '.arj', '.lz', '.lzh')  # Add or remove extensions as needed
+BLOCK_TORRENT_ON_REMOVAL = True  # If True, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
+syslog_enabled = True #if True, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
+syslog_level = 2 # 0 = no logging, 1 = send all events, 2 = send warnings and errors 3 = only send matching torrent removal events  (send to syslog if syslog_enabled=True)
 
 # Sonarr configuration
 sonarr_host = '' #hostname for sonarr server, use localhost if running on the same server
@@ -35,21 +36,27 @@ transmission_password = 'password'
 qbittorrent_url = 'http://XXXX:8080'
 qb_username = 'btuser'
 qb_password = 'btpass'
+qb_force_direct_delete = True  # If True, files will be deleted directly from qbittorrent when the torrent is removed. Helps avoid hanging ".parts" files in the download directory thats sonarr/radarr do not remove when a torrent is canceled mid transfer.
+#^ (continued from above) This may create logged errors in sonnarr/raddarr since files are removed directly from qBittorrent and are not present when Sonarr/Radarr tries to remove them. This can be ignored and sonarr/radarr will handle internally - end result is the same, the files are removed and the torrent is blocked from being downloaded again
+#^ (continued from above) this behaviour is not known to occur in transmission app, but similar approach could be taken if it is down the road.
 
 # Remote Sys Logging configuration
-syslog_host = '192.168.100.100'
-syslog_port = 514 # assume UDP only for now
-syslog_entity_id = 'torrentcleaner_python@hostname'
+syslog_host = '192.168.100.100' #ip of syslog server, hostname should work too assuming python instance can resolve DNS.
+syslog_port = 514 # UDP is only supported for this.
+syslog_entity_id = 'torrentcleaner_python@hostname' #will show up as the syslog source versus parent host (should show up separately)
 
 #############################################
 # Functions
 #############################################
 
 #handle user feedback/logging conditions
-def log_message(message: str, significant: bool = False):
+def log_message(message: str, log_rate: int = 2):
     print(message)
-    if significant and syslog_enabled:
-        send_syslog(message)
+    if syslog_enabled:
+        if syslog_level == 0 :
+            return None
+        elif log_rate >= syslog_level and syslog_level != 0:
+            send_syslog(message)
 
 #handle remote sys logging
 def send_syslog(message: str):
@@ -78,7 +85,7 @@ def remove_and_block_download(api_url, api_key, download_id, block_torrent=False
         'skipRedownload': True
     }
     if block_torrent:
-        log_message(f"Blocking torrent {download_id} from being downloaded again.", significant=True)
+        log_message(f"Blocking torrent {download_id} from being downloaded again.", log_rate=3)
     delete_url = f'{api_url}/{download_id}'
     headers = {
         'X-Api-Key': api_key,
@@ -86,9 +93,9 @@ def remove_and_block_download(api_url, api_key, download_id, block_torrent=False
     }
     response = requests.delete(delete_url, headers=headers, params=params)
     if response.status_code == 200:
-        log_message(f"Successfully removed download {download_id} from queue.")
+        log_message(f"Successfully removed download {download_id} from queue.", log_rate=3)
     else:
-        log_message(f"Failed to remove download {download_id}. Response: {response.status_code} - {response.text}", significant=True)
+        log_message(f"Failed to remove download {download_id}. Response: {response.status_code} - {response.text}", log_rate=3)
 
 #############################################
 # Transmission-related functions
@@ -145,14 +152,14 @@ def qbittorrent_login():
     payload = {'username': qb_username, 'password': qb_password}
     r = qb_session.post(login_url, data=payload)
     if r.text != "Ok.":
-        log_message("Failed to log in to qBittorrent", significant=True)
+        log_message("Failed to log in to qBittorrent", log_rate=2)
         qb_session = None
     else:
-        log_message("Logged in to qBittorrent successfully.")
+        log_message("Successfully logged in to qBittorrent", log_rate=1)
 
 def get_qbittorrent_torrent_files(torrent_hash):
     if qb_session is None:
-        log_message("qBittorrent session is not established.", significant=True)
+        log_message("qBittorrent session is not established.", log_rate=2)
         return None
     url = f'{qbittorrent_url}/api/v2/torrents/files'
     params = {'hash': torrent_hash}
@@ -161,9 +168,24 @@ def get_qbittorrent_torrent_files(torrent_hash):
         # qBittorrent returns a list of file objects
         return response.json()
     else:
-        log_message(f"Error fetching qBittorrent torrent files: {response.text}", significant=True)
+        log_message(f"Error fetching qBittorrent torrent files: {response.text}", log_rate=2)
         return None
-
+def del_qbittorrent_torrent_files(torrent_hash):
+    if qb_session is None:
+        log_message("qBittorrent session is not established.", log_rate=2)
+        return None
+    urld = f'{qbittorrent_url}/api/v2/torrents/delete'
+    params = {'hashes': torrent_hash, 'deleteFiles': 'true'}
+    response = qb_session.post(urld, data=params) 
+    if response.status_code == 200:
+        log_message(f"Removed torrent {torrent_hash} directly from qBittorrent and deleting files. [qb_force_direct_delete = True]", log_rate=3)
+        print(f"Removed torrent {torrent_hash} directly from qBittorrent and deleting files. [qb_force_direct_delete = True]")
+        return None
+    else:
+        log_message(f"Error directly deleting qBittorrent torrent files: {response.text}", log_rate=3)
+        print(f"Error directly deleting qBittorrent torrent files: {response.text}")
+        return None
+    
 #############################################
 # Initialization of the torrent client session
 #############################################
@@ -171,7 +193,7 @@ def get_qbittorrent_torrent_files(torrent_hash):
 if torrent_client.lower() == 'transmission':
     transmission_session_id = get_transmission_session_id()
     if not transmission_session_id:
-        log_message("Failed to get Transmission session ID.", significant=True)
+        log_message("Failed to get Transmission session ID.", log_rate=2)
 elif torrent_client.lower() == 'qbittorrent':
     qbittorrent_login()
 
@@ -185,7 +207,7 @@ for app_name, api_url, api_key in [
 ]:
     downloads_data = fetch_queue(api_url, api_key)
     downloads = downloads_data.get('records', [])
-    
+    log_message(f"Torrent cleaner script started.", log_rate=1)
     if isinstance(downloads, list):
         for download in downloads:
             # The 'downloadId' is assumed to be the torrent hash
@@ -200,7 +222,7 @@ for app_name, api_url, api_key in [
                 torrent_files = get_qbittorrent_torrent_files(torrent_hash)
             
             if torrent_files:
-                log_message(f"Checking torrent contents for: {title}")
+                log_message(f"Checking torrent contents for: {title}", log_rate=1)
                 remove_torrent_flag = False
 
                 if torrent_client.lower() == 'transmission':
@@ -209,25 +231,27 @@ for app_name, api_url, api_key in [
                         for file in torrent.get('files', []):
                             filename = file.get('name', '')
                             if filename.endswith(SUSPICIOUS_EXTENSIONS):
-                                log_message(f"Identified suspicious file: {filename}. Marking download for removal...", significant=True)
+                                log_message(f"Identified suspicious file: {filename}. Marking download for removal...", log_rate=3)
+                                print(f"Identified suspicious file: {filename}. Marking download for removal...")
                                 remove_torrent_flag = True
                                 break
                         if remove_torrent_flag:
                             break
-
                 elif torrent_client.lower() == 'qbittorrent':
                     # For qBittorrent, the API returns a list of file objects directly.
                     for file in torrent_files:
                         filename = file.get('name', '')
                         if filename.endswith(SUSPICIOUS_EXTENSIONS):
-                            log_message(f"Identified suspicious file: {filename}. Marking download for removal...", significant=True)
+                            log_message(f"Identified suspicious file: {filename}. Marking download for removal...", log_rate=3)
+                            print(f"Identified suspicious file: {filename}. Marking download for removal...")
                             remove_torrent_flag = True
                             break
-
-                if remove_torrent_flag:
-                    remove_and_block_download(api_url, api_key, download['id'], block_torrent=BLOCK_TORRENT_ON_REMOVAL)
+                    if remove_torrent_flag:
+                        if qb_force_direct_delete:
+                            del_qbittorrent_torrent_files(torrent_hash)
+                        remove_and_block_download(api_url, api_key, download['id'], block_torrent=BLOCK_TORRENT_ON_REMOVAL)
             else:
-                log_message(f"Failed to fetch torrent info for {title} in {app_name}", significant=True)
+                log_message(f"Failed to fetch torrent info for {title} in {app_name}", log_rate=2)
     else:
-        log_message(f"Unexpected data structure from {app_name} API. Expected a list.", significant=True)
-
+        log_message(f"Unexpected data structure from {app_name} API. Expected a list.", log_rate=2)
+log_message(f"Torrent cleaner script ended.", log_rate=1)
