@@ -278,6 +278,14 @@ for app_name, api_url, api_key in [
                         if qb_force_direct_delete:
                             del_qbittorrent_torrent_files(torrent_hash)
                         remove_and_block_download(api_url, api_key, download['id'], block_torrent=block_torrent_on_removal)
+            
+                #If no filter hits occurred for bad extensions, now check for hung downloads
+                if remove_warning_downloads and not remove_torrent_flag: 
+                    if download.get('status') == 'warning':
+                        time_in_queue = (datetime.now(timezone.utc) - datetime.fromisoformat(download['added'].replace('Z', '+00:00'))).total_seconds() / 60
+                        if time_in_queue > warning_time_threshold_minutes:
+                            log_message(f"Download {title} has been in a warning state for {time_in_queue:.2f} minutes. Torrent will be removed", log_rate=3)
+                            remove_and_block_download(api_url, api_key, download['id'], block_torrent=block_error_torrent_on_removal)
             else:
                 log_message(f"Failed to fetch torrent info for {title} in {app_name}", log_rate=2)
     else:
