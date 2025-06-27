@@ -20,8 +20,12 @@ def load_suspicious_extensions(url):
 #############################################
 #General
 
-#Permanent URL set below will need to be decided and changed it needed. @adelatour11 github repo for the main project is probably best, but other options are possible.
-SUSPICIOUS_EXTENSIONS = load_suspicious_extensions('https://raw.githubusercontent.com/bugalou/torrentcleaner/refs/heads/dynamic-extensions-filter/extfilter-strings.txt') #Text file URL to fetch suspicious file extensions from
+# SUSPICIOUS_EXTENSIONS list is dynamically fetched from central repo so that manually adding them later is not required. URL to text file points to text file
+# in project repo, but you can also point to your own hosted text file. See URL below for format. You should not have to change this. 
+# if there is a failure in fetching text file, the default extention list will be loaded. See above load_suspicious_extensions function if you need to change this.
+SUSPICIOUS_EXTENSIONS = load_suspicious_extensions('https://raw.githubusercontent.com/adelatour11/torrentcleaner/refs/heads/main/extfilter-strings.txt') 
+
+#Misc configuration
 BLOCK_TORRENT_ON_REMOVAL = True  # If True, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
 syslog_enabled = True #if True, messages will be sent to syslog based on logging level set in syslog_level. Syslog config below must be set up
 syslog_level = 2 # 0 = no logging, 1 = send all events, 2 = send warnings and errors 3 = only send matching torrent removal events  (send to syslog if syslog_enabled=True)
