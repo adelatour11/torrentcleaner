@@ -233,7 +233,6 @@ for app_name, api_url, api_key in [
 ]:
     downloads_data = fetch_queue(api_url, api_key)
     downloads = downloads_data.get('records', [])
-    log_message(f"Torrent cleaner script started.", log_rate=1)
     if isinstance(downloads, list):
         for download in downloads:
             # The 'downloadId' is assumed to be the torrent hash
