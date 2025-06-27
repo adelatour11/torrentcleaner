@@ -3,13 +3,27 @@ import json
 import logging
 import logging.handlers
 
+# Functions to load dynamically determined configuration variable values
+def load_suspicious_extensions(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        # Split lines, strip whitespace, ignore empty lines
+        return tuple(line.strip() for line in response.text.splitlines() if line.strip())
+    except Exception as e:
+        print(f"Failed to load suspicious extensions from {url}: {e}")
+        # Fallback to default
+        return ('.zipx', '.gz', '.lz', '.lnk', '.arj', '.lzh')
+
 #############################################
 # Configuration
 #############################################
 #General
-SUSPICIOUS_EXTENSIONS = ('.gz', '.001', '.zipx', '.lnk', '.arj', '.lz', '.lzh')  # Add or remove extensions as needed
+
+#Permanent URL set below will need to be decided and changed it needed. @adelatour11 github repo for the main project is probably best, but other options are possible.
+SUSPICIOUS_EXTENSIONS = load_suspicious_extensions('https://raw.githubusercontent.com/bugalou/torrentcleaner/refs/heads/dynamic-extensions-filter/extfilter-strings.txt') #Text file URL to fetch suspicious file extensions from
 BLOCK_TORRENT_ON_REMOVAL = True  # If True, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
-syslog_enabled = True #if True, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
+syslog_enabled = True #if True, messages will be sent to syslog based on logging level set in syslog_level. Syslog config below must be set up
 syslog_level = 2 # 0 = no logging, 1 = send all events, 2 = send warnings and errors 3 = only send matching torrent removal events  (send to syslog if syslog_enabled=True)
 
 # Sonarr configuration
@@ -25,7 +39,7 @@ radarr_url = f'http://{radarr_host}:{radarr_port}/api/v3/queue'
 radarr_api_key = 'API_KEY_HERE'  # Replace with your actual API key
 
 # Choose torrent client: set to either 'transmission' or 'qbittorrent'
-torrent_client = 'qbittorrent'  # Change to 'qbittorrent' if desired
+torrent_client = 'qbittorrent'  # Change to 'qbittorrent' or 'transmission' for desired BT client
 
 # Transmission configuration (only used if torrent_client == 'transmission')
 transmission_url = 'http://XXXX:9091/transmission/rpc'
