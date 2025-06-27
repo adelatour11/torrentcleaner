@@ -2,6 +2,7 @@ import requests
 import json
 import logging
 import logging.handlers
+from datetime import datetime
 
 # Functions to load dynamically determined configuration variable values
 def load_suspicious_extensions(url):
@@ -11,23 +12,19 @@ def load_suspicious_extensions(url):
         # Split lines, strip whitespace, ignore empty lines
         return tuple(line.strip() for line in response.text.splitlines() if line.strip())
     except Exception as e:
-        print(f"Failed to load suspicious extensions from {url}: {e}")
         # Fallback to default
-        return ('.zipx', '.gz', '.lz', '.lnk', '.arj', '.lzh')
+        return None
 
 #############################################
 # Configuration
 #############################################
 #General
 
-# SUSPICIOUS_EXTENSIONS list is dynamically fetched from central repo so that manually adding them later is not required. URL to text file points to text file
-# in project repo, but you can also point to your own hosted text file. See URL below for format. You should not have to change this. 
-# if there is a failure in fetching text file, the default extention list will be loaded. See above load_suspicious_extensions function if you need to change this.
-SUSPICIOUS_EXTENSIONS = load_suspicious_extensions('https://raw.githubusercontent.com/adelatour11/torrentcleaner/refs/heads/main/extfilter-strings.txt') 
-
-#Misc configuration
-BLOCK_TORRENT_ON_REMOVAL = True  # If True, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
-syslog_enabled = True #if True, messages will be sent to syslog based on logging level set in syslog_level. Syslog config below must be set up
+auto_fetch_extension_filter= True  # If true, the script will attempt to fetch the latest suspicious extensions from the provided URL on each run
+extension_filter_URL = 'https://raw.githubusercontent.com/adelatour11/torrentcleaner/refs/heads/main/extfilter-strings.txt'  # URL to fetch suspicious extensions from if Auto_Fetch_Extension_Filter is True
+manual_extension_filter = ('.zipx', '.gz', '.lz', '.lnk', '.arj', '.lzh')  # Fallback list of suspicious extensions if fetching fails or is disabled
+block_torrent_on_removal = True  # If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
+syslog_enabled = True #if true, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
 syslog_level = 2 # 0 = no logging, 1 = send all events, 2 = send warnings and errors 3 = only send matching torrent removal events  (send to syslog if syslog_enabled=True)
 
 # Sonarr configuration
@@ -150,10 +147,10 @@ def get_transmission_torrent_files(session_id, torrent_hash):
         if response.status_code == 200:
             return response.json().get('arguments', {}).get('torrents', [])
         else:
-            print(f"Error fetching torrent files: {response.text}")
+            log_message (f"Error fetching torrent files: {response.text}", log_rate=2)
             return None
     else:
-        print(f"Error fetching torrent files: {response.text}")
+        log_message(f"Error fetching torrent files: {response.text}", log_rate=2)
         return None
 
 #############################################
@@ -194,30 +191,41 @@ def del_qbittorrent_torrent_files(torrent_hash):
         return None
     urld = f'{qbittorrent_url}/api/v2/torrents/delete'
     params = {'hashes': torrent_hash, 'deleteFiles': 'true'}
-    response = qb_session.post(urld, data=params) 
+    response = qb_session.post(urld, data=params)  # <-- Use POST and data
     if response.status_code == 200:
         log_message(f"Removed torrent {torrent_hash} directly from qBittorrent and deleting files. [qb_force_direct_delete = True]", log_rate=3)
-        print(f"Removed torrent {torrent_hash} directly from qBittorrent and deleting files. [qb_force_direct_delete = True]")
         return None
     else:
         log_message(f"Error directly deleting qBittorrent torrent files: {response.text}", log_rate=3)
-        print(f"Error directly deleting qBittorrent torrent files: {response.text}")
         return None
     
 #############################################
 # Initialization of the torrent client session
 #############################################
-
+start_time = datetime.now()
+log_message(f"Torrent cleaner script started at {start_time}", log_rate=1)
 if torrent_client.lower() == 'transmission':
     transmission_session_id = get_transmission_session_id()
     if not transmission_session_id:
-        log_message("Failed to get Transmission session ID.", log_rate=2)
+        log_message("Failed to get Transmission session ID.", log_rate=2)    
 elif torrent_client.lower() == 'qbittorrent':
     qbittorrent_login()
 
 #############################################
 # Main processing: Check queues and verify torrent file names
 #############################################
+
+if auto_fetch_extension_filter:
+    log_message (f"Downloading latest extension filter list from {extension_filter_URL}", log_rate=1)
+    suspicious_extensions = load_suspicious_extensions(extension_filter_URL)
+    if suspicious_extensions is None:
+        log_message("Failed to download extension filter list. Falling back to manual extension filter list.", log_rate=2)
+        suspicious_extensions = manual_extension_filter
+    else:
+        log_message(f"Using downloaded suspicious extensions filter: {suspicious_extensions}", log_rate=1)
+else:
+    suspicious_extensions = manual_extension_filter
+    log_message(f"Using user defined suspicious extensions filter: {suspicious_extensions}", log_rate=1)
 
 for app_name, api_url, api_key in [
     ('Sonarr', sonarr_url, sonarr_api_key),
@@ -248,9 +256,8 @@ for app_name, api_url, api_key in [
                     for torrent in torrent_files:
                         for file in torrent.get('files', []):
                             filename = file.get('name', '')
-                            if filename.endswith(SUSPICIOUS_EXTENSIONS):
+                            if filename.endswith(suspicious_extensions):
                                 log_message(f"Identified suspicious file: {filename}. Marking download for removal...", log_rate=3)
-                                print(f"Identified suspicious file: {filename}. Marking download for removal...")
                                 remove_torrent_flag = True
                                 break
                         if remove_torrent_flag:
@@ -259,17 +266,17 @@ for app_name, api_url, api_key in [
                     # For qBittorrent, the API returns a list of file objects directly.
                     for file in torrent_files:
                         filename = file.get('name', '')
-                        if filename.endswith(SUSPICIOUS_EXTENSIONS):
+                        if filename.endswith(suspicious_extensions):
                             log_message(f"Identified suspicious file: {filename}. Marking download for removal...", log_rate=3)
-                            print(f"Identified suspicious file: {filename}. Marking download for removal...")
                             remove_torrent_flag = True
                             break
                     if remove_torrent_flag:
                         if qb_force_direct_delete:
                             del_qbittorrent_torrent_files(torrent_hash)
-                        remove_and_block_download(api_url, api_key, download['id'], block_torrent=BLOCK_TORRENT_ON_REMOVAL)
+                        remove_and_block_download(api_url, api_key, download['id'], block_torrent=block_torrent_on_removal)
             else:
                 log_message(f"Failed to fetch torrent info for {title} in {app_name}", log_rate=2)
     else:
         log_message(f"Unexpected data structure from {app_name} API. Expected a list.", log_rate=2)
-log_message(f"Torrent cleaner script ended.", log_rate=1)
+end_time = datetime.now()
+log_message(f"Script completed at {end_time}, duration: {end_time - start_time}", log_rate=1)
