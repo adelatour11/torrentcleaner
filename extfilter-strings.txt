@@ -1,0 +1,7 @@
+.zipx
+.gz
+.lz
+.lnk
+.arj
+.lzh
+.001
