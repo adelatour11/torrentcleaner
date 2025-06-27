@@ -7,7 +7,7 @@
 - Fetches the list of torrents from **Sonarr**'s queue.
 - Fetches the list of torrents from **Radarr**'s queue.
 - Identifies torrents managed by **Transmission** or **qBittorent**
-- Inspects torrent contents to find suspicious file extensions automatically determine from central repo, or user definable. 
+- Inspects torrent contents to find suspicious file extensions automatically determined [from central repo](https://github.com/adelatour11/torrentcleaner/blob/main/extfilter-strings.txt), or user definable. 
 - Automatically removes torrents containing suspicious files.
 - Deletes associated files on disk using Transmission's/qBittorent API.
 - Can forward filter hit events to syslog server with log leveling settings
@@ -25,7 +25,7 @@
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/bugalou/torrentcleaner.git
+    git clone https://github.com/adelatour11/torrentcleaner.git
     cd TorrentCleaner
     ```
 
