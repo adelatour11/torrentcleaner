@@ -1,22 +1,22 @@
 # TorrentCleaner
 
-**TorrentCleaner** is a Python script that automates the process of identifying and removing torrents that contain suspicious files (like `.zipx` or `.lnk`) from your Transmission download client. This ensures that unwanted or potentially harmful files are filtered out and deleted during the download process, keeping your system clean.
+**TorrentCleaner** is a Python script that automates the process of identifying and removing torrents that contain suspicious files (like `.zipx`, `.lnk`, `.gz`, etc) from your Transmission download client. This ensures that unwanted or potentially harmful files are filtered out and deleted during the download process, keeping your system clean.
 
 ## Features
 
 - Fetches the list of torrents from **Sonarr**'s queue.
 - Fetches the list of torrents from **Radarr**'s queue.
 - Identifies torrents managed by **Transmission** or **qBittorent**
-- Inspects torrent contents to find suspicious file extensions (user definable)
+- Inspects torrent contents to find suspicious file extensions automatically determine from central repo, or user definable. 
 - Automatically removes torrents containing suspicious files.
-- Deletes associated files on disk using Transmission's API.
-- Can forward filter hit events to syslog server
+- Deletes associated files on disk using Transmission's/qBittorent API.
+- Can forward filter hit events to syslog server with log leveling settings
 
 ## Requirements
 
 - **Sonarr** API key and URL
 - **Radarr** API key and URL
-- **Transmission** URL and credentials (if required)
+- **Transmission** OR **qBittorent** URL and credentials (if required)
 - Python 3.x
 - Python packages: `requests`
 
@@ -38,12 +38,23 @@
 3. Set up your environment variables (or hardcode the values in the script):
     - Sonarr API key
     - Radarr API key
-    - Transmission username and password (if authentication is required)
+    - Transmission or qBittorent username and password (if authentication is required)
     - Hostnames and ports for Sonarr, Radarr and Transmission
+    - Syslog server settings
 
     ```python
     
-    SUSPICIOUS_EXTENSIONS = ('.gz', '.001', '.zipx', '.lnk', '.arj') # Add or remove extensions as needed
+    #############################################
+    # Configuration
+    #############################################
+    #General
+    
+    # SUSPICIOUS_EXTENSIONS list is dynamically fetched from central repo so that manually adding them later is not required. URL to text file points to text file
+    # in project repo, but you can also point to your own hosted text file. See URL below for format. You should not have to change this. 
+    # if there is a failure in fetching text file, the default extention list will be loaded. See above load_suspicious_extensions function if you need to change this.
+    SUSPICIOUS_EXTENSIONS = load_suspicious_extensions('https://raw.githubusercontent.com/adelatour11/torrentcleaner/refs/heads/main/extfilter-strings.txt') 
+
+    #Misc configuration
     BLOCK_TORRENT_ON_REMOVAL = True  # If True, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
     syslog_enabled = True #if True, messages including filter hits will be sent to syslog. Syslog config below must be set up
     syslog_level = 2 # 0 = no logging, 1 = send all events, 2 = send warnings and errors 3 = only send matching torrent removal events  (send to syslog if syslog_enabled=True)
@@ -92,7 +103,8 @@ Once configured, you can run the script to automatically check for torrents with
 3. The script will:
     - Fetch all torrents from Sonarr's queue.
     - Inspect the files in each torrent.
-    - If any file extensions are found in torrent that match the extensions set in the tupple SUSPICIOUS_EXTENSIONS, the torrent will be removed and the files deleted.
+    - Download bad extension filter list from github (or use local default list if not internet)
+    - If any file extensions are found in torrent that match the filter list, the torrent will be removed and the files deleted.
     - Will forward any positive hit to syslog server along with errors if syslog_enabled = True
     - Will block torrent for the future if BLOCK_TORRENT_ON_REMOVAL = True
 
