@@ -20,10 +20,14 @@ def load_suspicious_extensions(url):
 #############################################
 #General
 
-auto_fetch_extension_filter = True  # If True, the script will attempt to fetch the latest suspicious extensions from the provided URL on each run
+#Misc configuration
+auto_fetch_extension_filter = True  # If true, the script will attempt to fetch the latest suspicious extensions from the provided URL on each run
 extension_filter_URL = 'https://raw.githubusercontent.com/adelatour11/torrentcleaner/refs/heads/main/extfilter-strings.txt'  # URL to fetch suspicious extensions from if Auto_Fetch_Extension_Filter is True
 manual_extension_filter = ('.zipx', '.gz', '.lz', '.lnk', '.arj', '.lzh')  # Fallback list of suspicious extensions if fetching fails or is disabled
-block_torrent_on_removal = True  # If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
+block_malicious_torrent_on_removal = True  # If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
+remove_warning_downloads = True  # If true, any download that has been in the queue in warned state and for X time (see below) will be removed
+warning_time_threshold_minutes = 60 * 24  # Time in minutes a download must be in warned state before being removed if Remove_Warning_Downloads is True
+block_error_torrent_on_removal = False  # If true, any torrent removed due to being in a warning state will be blocked from being downloaded again
 syslog_enabled = True #if true, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
 syslog_level = 2 # 0 = no logging, 1 = send all events, 2 = send warnings and errors 3 = only send matching torrent removal events  (send to syslog if syslog_enabled=True)
 
