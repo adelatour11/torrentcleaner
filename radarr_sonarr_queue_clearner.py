@@ -20,7 +20,7 @@ def load_suspicious_extensions(url):
 #############################################
 #General
 
-auto_fetch_extension_filter= True  # If true, the script will attempt to fetch the latest suspicious extensions from the provided URL on each run
+auto_fetch_extension_filter = True  # If True, the script will attempt to fetch the latest suspicious extensions from the provided URL on each run
 extension_filter_URL = 'https://raw.githubusercontent.com/adelatour11/torrentcleaner/refs/heads/main/extfilter-strings.txt'  # URL to fetch suspicious extensions from if Auto_Fetch_Extension_Filter is True
 manual_extension_filter = ('.zipx', '.gz', '.lz', '.lnk', '.arj', '.lzh')  # Fallback list of suspicious extensions if fetching fails or is disabled
 block_torrent_on_removal = True  # If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
