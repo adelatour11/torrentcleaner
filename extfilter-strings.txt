@@ -5,3 +5,5 @@
 .arj
 .lzh
 .001
+.scr
+.uue
