@@ -23,6 +23,7 @@ def load_suspicious_extensions(url):
 auto_fetch_extension_filter = True  # If True, the script will attempt to fetch the latest suspicious extensions from the provided URL on each run
 extension_filter_URL = 'https://raw.githubusercontent.com/adelatour11/torrentcleaner/refs/heads/main/extfilter-strings.txt'  # URL to fetch suspicious extensions from if Auto_Fetch_Extension_Filter is True
 manual_extension_filter = ('.zipx', '.gz', '.lz', '.lnk', '.arj', '.lzh')  # Fallback list of suspicious extensions if fetching fails or is disabled
+optional_extension_filter = ('.iso', '.img')   # Optional list of additional user definable suspicious extensions, added to the list of dynamically fetched extensions. Set to () to disable.
 block_torrent_on_removal = True  # If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
 syslog_enabled = True #if true, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
 syslog_level = 2 # 0 = no logging, 1 = send all events, 2 = send warnings and errors 3 = only send matching torrent removal events  (send to syslog if syslog_enabled=True)
@@ -222,7 +223,10 @@ if auto_fetch_extension_filter:
         log_message("Failed to download extension filter list. Falling back to manual extension filter list.", log_rate=2)
         suspicious_extensions = manual_extension_filter
     else:
-        log_message(f"Using downloaded suspicious extensions filter: {suspicious_extensions}", log_rate=1)
+        if optional_extension_filter:
+            suspicious_extensions += optional_extension_filter
+            log_message(f"Adding optional userdefined suspicious extensions filter: {optional_extension_filter}", log_rate=1)
+    log_message(f"Suspicious extensions filter is: {suspicious_extensions}", log_rate=1)
 else:
     suspicious_extensions = manual_extension_filter
     log_message(f"Using user defined suspicious extensions filter: {suspicious_extensions}", log_rate=1)
