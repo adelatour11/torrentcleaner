@@ -214,7 +214,7 @@ def del_qbittorrent_torrent_files(torrent_hash):
 # Initialization of the torrent client session
 #############################################
 start_time = datetime.now()
-log_message(f"Torrent cleaner script started at {start_time}", log_rate=1)
+# log_message(f"Torrent cleaner script started at {start_time}", log_rate=1)
 if torrent_client.lower() == 'transmission':
     transmission_session_id = get_transmission_session_id()
     if not transmission_session_id:
@@ -227,7 +227,7 @@ elif torrent_client.lower() == 'qbittorrent':
 #############################################
 
 if auto_fetch_extension_filter:
-    log_message (f"Downloading latest extension filter list from {extension_filter_URL}", log_rate=1)
+    # log_message (f"Downloading latest extension filter list from {extension_filter_URL}", log_rate=1)
     suspicious_extensions = load_suspicious_extensions(extension_filter_URL)
     if suspicious_extensions is None:
         log_message("Failed to download extension filter list. Falling back to manual extension filter list.", log_rate=2)
@@ -235,8 +235,8 @@ if auto_fetch_extension_filter:
     else:
         if optional_extension_filter:
             suspicious_extensions += optional_extension_filter
-            log_message(f"Adding optional userdefined suspicious extensions filter: {optional_extension_filter}", log_rate=1)
-    log_message(f"Suspicious extensions filter is: {suspicious_extensions}", log_rate=1)
+            # log_message(f"Adding optional userdefined suspicious extensions filter: {optional_extension_filter}", log_rate=1)
+    # log_message(f"Suspicious extensions filter is: {suspicious_extensions}", log_rate=1)
 else:
     suspicious_extensions = manual_extension_filter
     log_message(f"Using user defined suspicious extensions filter: {suspicious_extensions}", log_rate=1)
@@ -293,4 +293,4 @@ for app_name, api_url, api_key in [
     else:
         log_message(f"Unexpected data structure from {app_name} API. Expected a list.", log_rate=2)
 end_time = datetime.now()
-log_message(f"Script completed at {end_time}, duration: {end_time - start_time}", log_rate=1)
+# log_message(f"Script completed at {end_time}, duration: {end_time - start_time}", log_rate=1)
