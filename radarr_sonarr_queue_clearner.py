@@ -274,6 +274,7 @@ for app_name, api_url, api_key in [
                                 remove_torrent_flag = True
                                 break
                         if remove_torrent_flag:
+                            remove_and_block_download(api_url,api_key, download['id'], block_torrent=block_torrent_on_removal)
                             break
                 elif torrent_client.lower() == 'qbittorrent':
                     # For qBittorrent, the API returns a list of file objects directly.
