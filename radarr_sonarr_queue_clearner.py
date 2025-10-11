@@ -1,8 +1,9 @@
 import requests
-import json
 import logging
 import logging.handlers
+import configparser
 from datetime import datetime
+
 
 # Functions to load dynamically determined configuration variable values
 def load_suspicious_extensions(url):
@@ -15,51 +16,60 @@ def load_suspicious_extensions(url):
         # Fallback to default
         return None
 
+# Function to parse a tuple from string, used with configparser
+def parse_tuple(s: str) -> tuple:
+    s = s.strip('() ')
+    if not s:
+        return ()
+    return tuple(item.strip() for item in s.split(','))
+
 #############################################
 # Configuration
 #############################################
-#General
 
-auto_fetch_extension_filter = True  # If True, the script will attempt to fetch the latest suspicious extensions from the provided URL on each run
-extension_filter_URL = 'https://raw.githubusercontent.com/adelatour11/torrentcleaner/refs/heads/main/extfilter-strings.txt'  # URL to fetch suspicious extensions from if Auto_Fetch_Extension_Filter is True
-manual_extension_filter = ('.zipx', '.gz', '.lz', '.lnk', '.arj', '.lzh')  # Fallback list of suspicious extensions if fetching fails or is disabled
-optional_extension_filter = ('.iso', '.img')   # Optional list of additional user definable suspicious extensions, added to the list of dynamically fetched extensions. Set to () to disable.
-block_torrent_on_removal = True  # If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
-syslog_enabled = True #if true, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
-syslog_level = 2 # 0 = no logging, 1 = send all events, 2 = send warnings and errors 3 = only send matching torrent removal events  (send to syslog if syslog_enabled=True)
+# Rename config.ini.example to config.ini, add your configs to that file
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# General
+auto_fetch_extension_filter = config.getboolean('GENERAL', 'auto_fetch_extension_filter')
+extension_filter_URL = config.get('GENERAL', 'extension_filter_URL')
+manual_extension_filter = parse_tuple(config.get('GENERAL', 'manual_extension_filter'))
+optional_extension_filter = parse_tuple(config.get('GENERAL', 'optional_extension_filter'))
+block_torrent_on_removal = config.getboolean('GENERAL', 'block_torrent_on_removal')
+syslog_enabled = config.getboolean('GENERAL', 'syslog_enabled')
+syslog_level = config.getint('GENERAL', 'syslog_level')
 
 # Sonarr configuration
-sonarr_host = '' #hostname for sonarr server, use localhost if running on the same server
-sonarr_port = '8989'
+sonarr_host = config.get('SONARR', 'host')
+sonarr_port = config.get('SONARR', 'port')
 sonarr_url = f'http://{sonarr_host}:{sonarr_port}/api/v3/queue'
-sonarr_api_key = 'API_KEY_HERE'
+sonarr_api_key = config.get('SONARR', 'api_key')
 
 # Radarr configuration
-radarr_host = '' #hostname for radarr server, use localhost if running on the same server
-radarr_port = '7878'
+radarr_host = config.get('RADARR', 'host')
+radarr_port = config.get('RADARR', 'port')
 radarr_url = f'http://{radarr_host}:{radarr_port}/api/v3/queue'
-radarr_api_key = 'API_KEY_HERE'  # Replace with your actual API key
+radarr_api_key = config.get('RADARR', 'api_key')
 
 # Choose torrent client: set to either 'transmission' or 'qbittorrent'
-torrent_client = 'qbittorrent'  # Change to 'qbittorrent' or 'transmission' for desired BT client
+torrent_client = config.get('TORRENT', 'client')
 
 # Transmission configuration (only used if torrent_client == 'transmission')
-transmission_url = 'http://XXXX:9091/transmission/rpc'
-transmission_username = 'username'
-transmission_password = 'password'
+transmission_url = config.get('TRANSMISSION', 'url')
+transmission_username = config.get('TRANSMISSION', 'username')
+transmission_password = config.get('TRANSMISSION', 'password')
 
 # qBittorrent configuration (only used if torrent_client == 'qbittorrent')
-qbittorrent_url = 'http://XXXX:8080'
-qb_username = 'btuser'
-qb_password = 'btpass'
-qb_force_direct_delete = True  # If True, files will be deleted directly from qbittorrent when the torrent is removed. Helps avoid hanging ".parts" files in the download directory thats sonarr/radarr do not remove when a torrent is canceled mid transfer.
-#^ (continued from above) This may create logged errors in sonnarr/raddarr since files are removed directly from qBittorrent and are not present when Sonarr/Radarr tries to remove them. This can be ignored and sonarr/radarr will handle internally - end result is the same, the files are removed and the torrent is blocked from being downloaded again
-#^ (continued from above) this behaviour is not known to occur in transmission app, but similar approach could be taken if it is down the road.
+qbittorrent_url = config.get('QBITTORRENT', 'url')
+qb_username = config.get('QBITTORRENT', 'username')
+qb_password =  config.get('QBITTORRENT', 'password')
+qb_force_direct_delete =  config.getboolean('QBITTORRENT', 'force_direct_delete') 
 
 # Remote Sys Logging configuration
-syslog_host = '192.168.100.100' #ip of syslog server, hostname should work too assuming python instance can resolve DNS.
-syslog_port = 514 # UDP is only supported for this.
-syslog_entity_id = 'torrentcleaner_python@hostname' #will show up as the syslog source versus parent host (should show up separately)
+syslog_host = config.get('SYSLOG', 'host')
+syslog_port = config.getint('SYSLOG', 'port')
+syslog_entity_id = config.get('SYSLOG', 'entity_id')
 
 #############################################
 # Functions
