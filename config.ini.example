@@ -1,0 +1,53 @@
+[GENERAL]
+# If true, the script will attempt to fetch the latest suspicious extensions from the provided URL on each run
+auto_fetch_extension_filter = true  
+# URL to fetch suspicious extensions from if Auto_Fetch_Extension_Filter is true
+extension_filter_URL = https://raw.githubusercontent.com/adelatour11/torrentcleaner/refs/heads/main/extfilter-strings.txt
+# Fallback list of suspicious extensions if fetching fails or is disabled
+manual_extension_filter = (.zipx, .gz, .lz, .lnk, .arj, .lzh, .exe, .msi, .iso, .scr)
+# Optional list of additional user definable suspicious extensions, added to the list of dynamically fetched extensions. Set to () to disable.
+optional_extension_filter = (.iso, .img)
+# If true, the torrent will be blocked from being downloaded again, otherwise it will be removed from the queue but not blocked
+block_torrent_on_removal = true
+# if true, significant messages including filter hits will be sent to syslog. Syslog config below must be set up
+syslog_enabled = true
+# 0 = no logging, 1 = send all events, 2 = send warnings and errors 3 = only send matching torrent removal events  (send to syslog if syslog_enabled=True)
+syslog_level = 2
+
+[SONARR]
+host = localhost
+port = 8989
+api_key = sonarr_api_key_here
+
+[RADARR]
+host = localhost
+port = 7878
+api_key = radarr_api_key_here
+
+[TORRENT]
+# transmission or qbittorrent
+client = transmission 
+
+[QBITTORRENT]
+# qBittorrent configuration (only used if torrent_client == qbittorrent)
+url = http://XXXX:8080
+username = admin
+password = adminadmin
+# If true, files will be deleted directly from qbittorrent when the torrent is removed. Helps avoid hanging ".parts" files in the download directory thats sonarr/radarr do not remove when a torrent is canceled mid transfer.
+#^ (continued from above) This may create logged errors in sonnarr/raddarr since files are removed directly from qBittorrent and are not present when Sonarr/Radarr tries to remove them. This can be ignored and sonarr/radarr will handle internally - end result is the same, the files are removed and the torrent is blocked from being downloaded again
+#^ (continued from above) this behaviour is not known to occur in transmission app, but similar approach could be taken if it is down the road.
+force_direct_delete = true
+
+[TRANSMISSION]
+# Transmission configuration (only used if torrent_client == transmission)
+url = http://XXXX:9091/transmission/rpc
+username = username
+password = password
+
+[SYSLOG]
+#ip of syslog server, hostname should work too assuming python instance can resolve DNS.
+host = 192.168.100.100
+# UDP is only supported for this.
+port = 514
+# will show up as the syslog source versus parent host (should show up separately)
+entity_id = torrentcleaner_python@hostname
