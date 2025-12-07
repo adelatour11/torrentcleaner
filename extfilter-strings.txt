@@ -9,3 +9,4 @@
 .uue
 .uua
 .exe
+.rar
