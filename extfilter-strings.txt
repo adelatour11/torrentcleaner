@@ -11,3 +11,4 @@
 .uua
 .exe
 .rar
+.7z
